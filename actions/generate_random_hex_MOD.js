@@ -6,7 +6,24 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Send Embed Message",
+name: "Generate Random Hex Color",
+
+
+//---------------------------------------------------------------------
+	 // DBM Mods Manager Variables (Optional but nice to have!)
+	 //
+	 // These are variables that DBM Mods Manager uses to show information
+	 // about the mods for people to see in the list.
+	 //---------------------------------------------------------------------
+
+	 // Who made the mod (If not set, defaults to "DBM Mods")
+	 author: "Jakob",
+
+	 // The version of the mod (Defaults to 1.0.0)
+	 version: "1.8.6", // Added in 1.8.6
+
+	 // A short description to show on the mod line for this mod (Must be on a single line)
+	 short_description: "Generates a random hex color code",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +31,7 @@ name: "Send Embed Message",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Embed Message",
+section: "Other Stuff",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,30 +40,20 @@ section: "Embed Message",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Same Channel', 'Command Author', 'Mentioned User', 'Mentioned Channel', 'Default Channel', 'Temp Variable', 'Server Variable', 'Global Variable']
-	return `${channels[parseInt(data.channel)]}: ${data.varName}`;
+	return `Generates random hex color code`;
 },
 
 //---------------------------------------------------------------------
-// DBM Mods Manager Variables (Optional but nice to have!)
+// Action Storage Function
 //
-// These are variables that DBM Mods Manager uses to show information
-// about the mods for people to see in the list.
+// Stores the relevant variable info for the editor.
 //---------------------------------------------------------------------
 
-// Who made the mod (If not set, defaults to "DBM Mods")
-author: "DBM & General Wrex",
-
-// The version of the mod (Defaults to 1.0.0)
-version: "1.9", //Added in 1.9
-
-// A short description to show on the mod line for this mod (Must be on a single line)
-short_description: "Changed Category and added Store Message Object option.",
-
-// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
-
-
-//---------------------------------------------------------------------
+variableStorage: function(data, varType) {
+	const type = parseInt(data.storage);
+	if(type !== varType) return;
+	return ([data.varName, 'Color Code']);
+},
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -56,7 +63,7 @@ short_description: "Changed Category and added Store Message Object option.",
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
+fields: ["storage", "varName"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -76,38 +83,24 @@ fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
 
 html: function(isEvent, data) {
 	return `
-<div><p>This action has been modified by DBM Mods.</p></div><br>
+</div>
+		<p>
+			<u>Mod Info:</u><br>
+			Created by Jakob!<br>
+			For Embed Messages colors you can also insert RANDOM into the color field.
+		</p>
+	</div><br>
 <div>
 	<div style="float: left; width: 35%;">
-		Source Embed Object:<br>
-		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
-			${data.variables[1]}
+		Store In:<br>
+		<select id="storage" class="round" onchange="glob.variableChange(this, 'varNameContainer')">
+			${data.variables[0]}
 		</select>
 	</div>
-	<div id="varNameContainer" style="float: right; width: 60%;">
+	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
 		Variable Name:<br>
-		<input id="varName" class="round" type="text" list="variableList"><br>
+		<input id="varName" class="round" type="text">
 	</div>
-</div><br><br><br>
-<div style="padding-top: 8px; float: left; width: 35%;">
-	Send To:<br>
-	<select id="channel" class="round" onchange="glob.sendTargetChange(this, 'varNameContainer2')">
-		${data.sendTargets[isEvent ? 1 : 0]}
-	</select>
-</div>
-<div id="varNameContainer2" style="display: none; float: right; width: 60%;">
-	Variable Name:<br>
-	<input id="varName2" class="round" type="text" list="variableList"><br>
-</div><br><br><br><br>
-<div style="float: left; width: 35%;">
-Store Message Object In:<br>
-	<select id="storage3" class="round" onchange="glob.variableChange(this, 'varNameContainer3')">
-		${data.variables[0]}
-	</select>
-</div>	
-<div id="varNameContainer3" style="display: ; float: right; width: 60%;">
-	Storage Variable Name:<br>
-	<input id="varName3" class="round" type="text">
 </div>`
 },
 
@@ -122,8 +115,7 @@ Store Message Object In:<br>
 init: function() {
 	const {glob, document} = this;
 
-	glob.sendTargetChange(document.getElementById('channel'), 'varNameContainer2');
-	glob.variableChange(document.getElementById('storage3'), 'varNameContainer3');
+	glob.variableChange(document.getElementById('storage'), 'varNameContainer');
 },
 
 //---------------------------------------------------------------------
@@ -136,36 +128,12 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const storage = parseInt(data.storage);
+	const type = parseInt(data.storage);
 	const varName = this.evalMessage(data.varName, cache);
-	const embed = this.getVariable(storage, varName, cache);
-	if(!embed) {
-		this.callNextAction(cache);
-		return;
-	}
-
-	const msg = cache.msg;
-	const channel = parseInt(data.channel);
-	const varName2 = this.evalMessage(data.varName2, cache);
-	const varName3 = this.evalMessage(data.varName3, cache);
-	const storage3 = parseInt(data.storage3);
-	const target = this.getSendTarget(channel, varName2, cache);
-	
-	if(target && target.send) {
-		try {
-			target.send({embed}).then(function(message) {                 
-				if(message && varName3) this.storeValue(message, storage3, varName3, cache);
-				this.callNextAction(cache);
-			}.bind(this)).catch(this.displayError.bind(this, data, cache));
-		} catch (e) {
-			this.displayError(data, cache, e);
-		}
-	} else {
-		this.callNextAction(cache);
-	}
+	const code = "000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);});
+	this.storeValue('#' + code, type, varName, cache);
+	this.callNextAction(cache);
 },
-
 //---------------------------------------------------------------------
 // Action Bot Mod
 //
@@ -175,7 +143,6 @@ action: function(cache) {
 // functions you wish to overwrite.
 //---------------------------------------------------------------------
 
-mod: function(DBM) {
-}
+mod: function(DBM) {}
 
 }; // End of module

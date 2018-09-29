@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Send Embed Message",
+name: "Welcome",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Send Embed Message",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Embed Message",
+section: "#Mod Information",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,8 +23,7 @@ section: "Embed Message",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Same Channel', 'Command Author', 'Mentioned User', 'Mentioned Channel', 'Default Channel', 'Temp Variable', 'Server Variable', 'Global Variable']
-	return `${channels[parseInt(data.channel)]}: ${data.varName}`;
+	return `Does nothing - Click "Edit" for more information`;
 },
 
 //---------------------------------------------------------------------
@@ -35,18 +34,25 @@ subtitle: function(data) {
 //---------------------------------------------------------------------
 
 // Who made the mod (If not set, defaults to "DBM Mods")
-author: "DBM & General Wrex",
+author: "DBM Mods",
 
 // The version of the mod (Defaults to 1.0.0)
-version: "1.9", //Added in 1.9
+version: "1.9.0",
 
-// A short description to show on the mod line for this mod (Must be on a single line)
-short_description: "Changed Category and added Store Message Object option.",
+// A short description to show on the mod line for this mod.
+short_description: "Information about the Mod Collection.",
 
 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
 
+//---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
+// Action Storage Function
+//
+// Stores the relevant variable info for the editor.
+//---------------------------------------------------------------------
+
+variableStorage: function(data, varType) {},
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -56,7 +62,7 @@ short_description: "Changed Category and added Store Message Object option.",
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
+fields: ["mods"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -76,38 +82,73 @@ fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
 
 html: function(isEvent, data) {
 	return `
-<div><p>This action has been modified by DBM Mods.</p></div><br>
-<div>
-	<div style="float: left; width: 35%;">
-		Source Embed Object:<br>
-		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
-			${data.variables[1]}
-		</select>
-	</div>
-	<div id="varNameContainer" style="float: right; width: 60%;">
-		Variable Name:<br>
-		<input id="varName" class="round" type="text" list="variableList"><br>
-	</div>
-</div><br><br><br>
-<div style="padding-top: 8px; float: left; width: 35%;">
-	Send To:<br>
-	<select id="channel" class="round" onchange="glob.sendTargetChange(this, 'varNameContainer2')">
-		${data.sendTargets[isEvent ? 1 : 0]}
-	</select>
-</div>
-<div id="varNameContainer2" style="display: none; float: right; width: 60%;">
-	Variable Name:<br>
-	<input id="varName2" class="round" type="text" list="variableList"><br>
-</div><br><br><br><br>
-<div style="float: left; width: 35%;">
-Store Message Object In:<br>
-	<select id="storage3" class="round" onchange="glob.variableChange(this, 'varNameContainer3')">
-		${data.variables[0]}
-	</select>
-</div>	
-<div id="varNameContainer3" style="display: ; float: right; width: 60%;">
-	Storage Variable Name:<br>
-	<input id="varName3" class="round" type="text">
+<style>
+table.scroll {
+    width: 525px; /* 140px * 5 column + 16px scrollbar width */
+    border-spacing: 0;
+    border: 2px solid white;
+}
+
+table.scroll tbody,
+table.scroll thead tr { display: block; }
+
+table.scroll tbody {
+    height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+table.scroll tbody td,
+table.scroll thead th {
+    width: 176px;
+}
+
+table.scroll thead th:last-child {
+    width: 180px; /* 140px + 16px scrollbar width */
+}
+
+thead tr th {
+    height: 30px;
+    line-height: 30px;
+    /*text-align: left;*/
+}
+
+tbody { border-top: 2px solid white; }
+
+</style>
+<div id ="wrexdiv" style="width: 550px; height: 350px; overflow-y: scroll;">
+	<p>
+		<h1>Welcome!</h1>
+		Thank you for using the DBM Mod Collection!<br>
+		If you want to tell us something, join the Discord Guild below.
+		And if something doesn't work feel free to create an issue on GitHub
+		or open #support and describe your problem.
+
+		<h3>Discord:</h3>
+		Join the Discord Guild to stay updated and be able to suggest things.<br>
+		https://dbm-network.com/
+
+		<h3>Your version:</h3>
+		${this.version}
+
+		<h3>GitHub:</h3>
+		Visit us on GitHub! The whole mod collection is on GitHub
+		and everyone is invited to join us developing new mods!<br>
+		Copy and paste the link to view the site in your browser.<br>
+		https://github.com/Discord-Bot-Maker-Mods/DBM-Mods/
+	</p>
+	<h3>Current List of Mods</h3>
+	<table class="scroll">
+		<thead >
+			<tr>
+				<th scope="col">Name</th>
+				<th scope="col">Section</th>
+				<th scope="col">Author</th>
+			</tr>
+		</thead>
+			<tbody id="mods">
+			</tbody>
+	</table><br><br>
 </div>`
 },
 
@@ -122,8 +163,43 @@ Store Message Object In:<br>
 init: function() {
 	const {glob, document} = this;
 
-	glob.sendTargetChange(document.getElementById('channel'), 'varNameContainer2');
-	glob.variableChange(document.getElementById('storage3'), 'varNameContainer3');
+	var path = require("path")
+
+	try {
+
+		var mods = document.getElementById("mods");
+
+		require("fs").readdirSync(__dirname).forEach(function(file) {
+			if(file.match(/MOD.js/i)) {
+				var action = require(path.join(__dirname, file));
+				if(action.name && action.action !== null) {
+
+					const tr = document.createElement('tr')
+					tr.setAttribute('class', 'table-dark')
+
+					const name = document.createElement('td')
+					const headerText = document.createElement("b")
+					headerText.innerHTML = action.name
+					name.appendChild(headerText)
+
+					name.setAttribute('scope', 'row')
+					tr.appendChild(name)
+
+					const section = document.createElement('td')
+					section.appendChild(document.createTextNode(action.section))
+					tr.appendChild(section)
+
+					const author = document.createElement('td')
+					author.appendChild(document.createTextNode(action.author ? action.author : "DBM"))
+					tr.appendChild(author)
+					mods.appendChild(tr);
+				}
+			}
+		});
+	} catch (error) {
+		// write any init errors to errors.txt in dbm's main directory
+		require("fs").appendFile("errors.txt", error.stack ? error.stack : error + "\r\n");
+	}
 },
 
 //---------------------------------------------------------------------
@@ -135,35 +211,7 @@ init: function() {
 //---------------------------------------------------------------------
 
 action: function(cache) {
-	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const storage = parseInt(data.storage);
-	const varName = this.evalMessage(data.varName, cache);
-	const embed = this.getVariable(storage, varName, cache);
-	if(!embed) {
-		this.callNextAction(cache);
-		return;
-	}
-
-	const msg = cache.msg;
-	const channel = parseInt(data.channel);
-	const varName2 = this.evalMessage(data.varName2, cache);
-	const varName3 = this.evalMessage(data.varName3, cache);
-	const storage3 = parseInt(data.storage3);
-	const target = this.getSendTarget(channel, varName2, cache);
-	
-	if(target && target.send) {
-		try {
-			target.send({embed}).then(function(message) {                 
-				if(message && varName3) this.storeValue(message, storage3, varName3, cache);
-				this.callNextAction(cache);
-			}.bind(this)).catch(this.displayError.bind(this, data, cache));
-		} catch (e) {
-			this.displayError(data, cache, e);
-		}
-	} else {
-		this.callNextAction(cache);
-	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------
